@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3BHK Vastu Compliant Virtual Tour</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #87CEEB; /* Sky blue background */
+        }
+        #webgl-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 350px;
+            pointer-events: none; /* Let clicks pass through to the canvas */
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+        p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #555;
+            line-height: 1.4;
+        }
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            display: none;
+            transform: translate(-50%, -150%);
+            white-space: nowrap;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
+    
+    <!-- GSAP for smooth camera transitions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <h1>3BHK Vastu Compliant Tour</h1>
+        <p><strong>Controls:</strong> Click the glowing spheres to smoothly navigate between rooms. Click and drag your mouse to look around.</p>
+    </div>
+    
+    <div id="tooltip">Room Name</div>
+    <div id="webgl-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ==========================================
+        // 1. SCENE, CAMERA, AND RENDERER SETUP
+        // ==========================================
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xdceaf5);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Start Camera outside the Entrance (East side) looking in
+        camera.position.set(22, 6, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        // Restrict vertical angles so user cannot look under the floor
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.target.set(10, 1, 0); // Look at Entrance Lobby
+
+        // ==========================================
+        // 2. VASTU COMPLIANT LIGHTING
+        // ==========================================
+        // Ambient light for overall visibility
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        // Directional Light simulating Morning Sun from the East (+x axis)
+        const eastSunlight = new THREE.DirectionalLight(0xfffaee, 1.2);
+        eastSunlight.position.set(30, 20, 0); 
+        eastSunlight.castShadow = true;
+        eastSunlight.shadow.camera.left = -20;
+        eastSunlight.shadow.camera.right = 20;
+        eastSunlight.shadow.camera.top = 20;
+        eastSunlight.shadow.camera.bottom = -20;
+        scene.add(eastSunlight);
+
+        // ==========================================
+        // 3. ARCHITECTURAL LAYOUT & VASTU MAPPING
+        // ==========================================
+        /*
+            Coordinate System Mapping (1 unit = 1 meter approx):
+            +X = East, -X = West, +Z = South, -Z = North.
+            Grid Layout: 30x30 total size, divided into 3x3 zones (each 10x10).
+        */
+        const rooms = [
+            { id: "living", name: "Living Room (NE Zone)\nLight Yellow for positivity", x: 10, z: -10, color: 0xFFF9C4 }, // North-East
+            { id: "kitchen", name: "Kitchen (SE Zone - Agni Kund)\nWarm tones. Cooking faces East.", x: 10, z: 10, color: 0xFFCCB6 }, // South-East
+            { id: "master", name: "Master Bedroom (SW Zone)\nEarthy tones for stability.", x: -10, z: 10, color: 0xD7CCC8 }, // South-West
+            { id: "bed2", name: "Bedroom 2 (NW Zone)\nGuest/Kids Room.", x: -10, z: -10, color: 0xB3E5FC }, // North-West
+            { id: "bed3", name: "Bedroom 3 (South Zone)\nRelaxing space.", x: 0, z: 10, color: 0xFFE0B2 }, // South
+            { id: "bath", name: "Bathrooms (West Zone)\nStrictly avoided in NE/Center.", x: -10, z: 0, color: 0xE0E0E0 }, // West
+            { id: "center", name: "Brahmasthan (Center)\nKept open and clutter-free.", x: 0, z: 0, color: 0xFFFFFF }, // Center
+            { id: "dining", name: "Dining/Passage (North Zone)", x: 0, z: -10, color: 0xF5F5F5 }, // North
+            { id: "entrance", name: "Entrance Lobby (East Zone)\nFacing East/NE.", x: 10, z: 0, color: 0xC8E6C9 } // East
+        ];
+
+        const hotspots = [];
+
+        // Build Floors and Hotspots
+        rooms.forEach(room => {
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(9.6, 9.6); // Slightly smaller to leave room for walls
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: room.color,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(room.x, 0, room.z);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Hotspot (Waypoint)
+            const hotspotGeo = new THREE.SphereGeometry(0.4, 32, 32);
+            const hotspotMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00E676, // Glowing green
+                transparent: true,
+                opacity: 0.8
+            });
+            const hotspot = new THREE.Mesh(hotspotGeo, hotspotMat);
+            // Pulse animation logic will use this initial Y position
+            hotspot.position.set(room.x, 1.2, room.z); 
+            hotspot.userData = { roomInfo: room };
+            scene.add(hotspot);
+            hotspots.push(hotspot);
+
+            // Add inner glow/halo effect to waypoint
+            const haloGeo = new THREE.SphereGeometry(0.6, 16, 16);
+            const haloMat = new THREE.MeshBasicMaterial({
+                color: 0x69F0AE,
+                transparent: true,
+                opacity: 0.3,
+                wireframe: true
+            });
+            const halo = new THREE.Mesh(haloGeo, haloMat);
+            hotspot.add(halo);
+        });
+
+        // Build Walls (Semi-transparent, 1.5 units high for easy top-down visibility)
+        const wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.6,
+            roughness: 0.9
+        });
+
+        function createWall(w, h, d, x, z) {
+            const wallGeo = new THREE.BoxGeometry(w, h, d);
+            const wall = new THREE.Mesh(wallGeo, wallMaterial);
+            wall.position.set(x, h/2, z);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+        }
+
+        // Outer Boundary Walls
+        createWall(30, 1.5, 0.4, 0, 15); // South wall
+        createWall(30, 1.5, 0.4, 0, -15); // North wall
+        createWall(0.4, 1.5, 30, -15, 0); // West wall
+        createWall(0.4, 1.5, 30, 15, 0); // East wall
+
+        // Internal Partition Walls (Grid Lines)
+        createWall(30, 1.5, 0.4, 0, 5);
+        createWall(30, 1.5, 0.4, 0, -5);
+        createWall(0.4, 1.5, 30, 5, 0);
+        createWall(0.4, 1.5, 30, -5, 0);
+
+        // ==========================================
+        // 4. SPECIFIC VASTU ARCHITECTURAL DETAILS
+        // ==========================================
+        
+        // Kitchen Platform in SE corner, facing East (Person cooks facing East)
+        const platformGeo = new THREE.BoxGeometry(1.2, 0.9, 6);
+        const platformMat = new THREE.MeshStandardMaterial({ color: 0x424242 }); // Granite
+        const platform = new THREE.Mesh(platformGeo, platformMat);
+        // Positioned inside the Kitchen (10, 10) against the East wall (X=14.4)
+        platform.position.set(14.2, 0.45, 10);
+        platform.castShadow = true;
+        scene.add(platform);
+
+        // Pooja Room specific block in NE corner of the NE zone
+        const poojaGeo = new THREE.BoxGeometry(2, 1.5, 2);
+        const poojaMat = new THREE.MeshStandardMaterial({ color: 0xFFCA28, transparent: true, opacity: 0.8 });
+        const pooja = new THREE.Mesh(poojaGeo, poojaMat);
+        pooja.position.set(13.8, 0.75, -13.8); // Extreme North-East corner
+        scene.add(pooja);
+
+        // ==========================================
+        // 5. RAYCASTING & DYNAMIC INTERACTIVITY
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const tooltip = document.getElementById('tooltip');
+        let hoveredHotspot = null;
+
+        window.addEventListener('mousemove', (event) => {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Move tooltip with cursor
+            tooltip.style.left = event.clientX + 'px';
+            tooltip.style.top = event.clientY + 'px';
+
+            // Raycast for hover state
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(hotspots);
+
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer';
+                const roomInfo = intersects[0].object.userData.roomInfo;
+                tooltip.style.display = 'block';
+                tooltip.innerText = roomInfo.name;
+                
+                // Slight scale up on hover
+                if (hoveredHotspot !== intersects[0].object) {
+                    if (hoveredHotspot) gsap.to(hoveredHotspot.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+                    hoveredHotspot = intersects[0].object;
+                    gsap.to(hoveredHotspot.scale, { x: 1.5, y: 1.5, z: 1.5, duration: 0.3 });
+                }
+            } else {
+                document.body.style.cursor = 'default';
+                tooltip.style.display = 'none';
+                if (hoveredHotspot) {
+                    gsap.to(hoveredHotspot.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+                    hoveredHotspot = null;
+                }
+            }
+        });
+
+        window.addEventListener('click', () => {
+            if (hoveredHotspot) {
+                const room = hoveredHotspot.userData.roomInfo;
+                
+                // Hide tooltip during travel
+                tooltip.style.display = 'none';
+
+                // GSAP Transition: Move Camera Position
+                // Offset camera slightly so we don't land exactly inside the sphere
+                gsap.to(camera.position, {
+                    x: room.x - 3, 
+                    y: 2.5, // Standing eye-level height
+                    z: room.z + 3,
+                    duration: 1.5,
+                    ease: "power2.inOut"
+                });
+
+                // GSAP Transition: Update OrbitControls Target smoothly
+                gsap.to(controls.target, {
+                    x: room.x,
+                    y: 1.2,
+                    z: room.z,
+                    duration: 1.5,
+                    ease: "power2.inOut",
+                    onUpdate: () => controls.update()
+                });
+            }
+        });
+
+        // ==========================================
+        // 6. RESIZE HANDLER & ANIMATION LOOP
+        // ==========================================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            // Gentle floating animation for hotspots
+            hotspots.forEach(hotspot => {
+                hotspot.position.y = 1.2 + Math.sin(time * 2 + hotspot.position.x) * 0.15;
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
