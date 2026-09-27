@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Miniature 3BHK Home Tour - Vastu Compliant</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB; /* Sky blue */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #room-label {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: background 0.3s;
+            max-width: 80%;
+        }
+        #instructions {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 8px 20px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="room-label">Bird's Eye View (Vastu Grid)</div>
+        <div id="instructions">🖱️ Click anywhere to flow to the next area</div>
+    </div>
+
+    <!-- Three.js r128 CDN as requested -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // 1. Scene Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); 
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Lighting (Morning Sun from East)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        // East is +X in this coordinate system. Sun rises from +X.
+        const dirLight = new THREE.DirectionalLight(0xffdfbb, 0.9); 
+        dirLight.position.set(30, 30, 0); 
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -25;
+        dirLight.shadow.camera.right = 25;
+        dirLight.shadow.camera.top = 25;
+        dirLight.shadow.camera.bottom = -25;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // 3. Materials & Building Functions
+        const materials = {
+            grass: new THREE.MeshStandardMaterial({ color: 0x55aa55 }),
+            floor: new THREE.MeshStandardMaterial({ color: 0xdddddd }),
+            wood: new THREE.MeshStandardMaterial({ color: 0x8b5a2b }),
+            wall: new THREE.MeshStandardMaterial({ color: 0xf5f5dc, transparent: true, opacity: 0.7 }), // Transparent for miniature view
+            water: new THREE.MeshStandardMaterial({ color: 0x44aaff }),
+            bed: new THREE.MeshStandardMaterial({ color: 0x3498db }),
+            shrine: new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.6, roughness: 0.2 }),
+            darkWood: new THREE.MeshStandardMaterial({ color: 0x3e2723 }),
+            glass: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3 })
+        };
+
+        function addBox(w, h, d, mat, x, y, z, castShadow = true) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y + h / 2, z);
+            mesh.castShadow = castShadow;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            return mesh;
+        }
+
+        // --- Build Vastu 3x3 Grid Miniature World --- //
+        // Compass Mapping: +X = East, -X = West, -Z = North, +Z = South
+
+        // Garden / Base Ground
+        addBox(50, 0.5, 50, materials.grass, 0, -0.5, 0, false);
+        
+        // Front Gates & Path (East Facing Entrance)
+        addBox(1, 3, 1, materials.darkWood, 17, 0, -2); 
+        addBox(1, 3, 1, materials.darkWood, 17, 0, 2);  
+        addBox(4, 0.1, 4, materials.floor, 16, 0, 0);  
+
+        // House Foundation (30x30 Floorplan divided into 10x10 zones)
+        addBox(30, 0.2, 30, materials.floor, 0, 0, 0);
+
+        // Outline Walls (Low height)
+        const wallH = 1.2;
+        addBox(30, wallH, 0.5, materials.wall, 0, 0, -15); // North Wall
+        addBox(30, wallH, 0.5, materials.wall, 0, 0, 15);  // South Wall
+        addBox(0.5, wallH, 30, materials.wall, -15, 0, 0); // West Wall
+        addBox(0.5, wallH, 30, materials.wall, 15, 0, 0);  // East Wall
+
+        // Zone 1: CENTER (Brahmasthan) -> 0, 0
+        // Kept open and clutter free
+        addBox(10, 0.05, 10, new THREE.MeshStandardMaterial({ color: 0xffffff }), 0, 0.2, 0); // White Marble
+
+        // Zone 2: NORTH-EAST (Puja Ghar - Vastu Mandatory) -> +X (10), -Z (-10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xFFF9C4 }), 10, 0.2, -10); // Yellow floor
+        addBox(2, 2, 1.5, materials.shrine, 13, 0.2, -13); // Golden Shrine in the extreme corner
+
+        // Zone 3: SOUTH-EAST (Kitchen - Vastu Mandatory) -> +X (10), +Z (10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xFFCCB6 }), 10, 0.2, 10); // Warm floor
+        addBox(1.5, 1.2, 5, new THREE.MeshStandardMaterial({ color: 0xecf0f1 }), 13, 0.2, 10); // Counter facing East (Cooking facing East)
+        addBox(1.5, 2.5, 1.5, new THREE.MeshStandardMaterial({ color: 0x95a5a6 }), 13, 0.2, 13); // Fridge
+
+        // Zone 4: SOUTH-WEST (Master Bedroom - Vastu Mandatory) -> -X (-10), +Z (10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }), -10, 0.2, 10); // Earthy tone floor
+        addBox(5, 0.8, 4, materials.darkWood, -12, 0.2, 10); // Master Bed (Heavy furniture)
+
+        // Zone 5: NORTH-WEST (Bedroom 2 / Guest) -> -X (-10), -Z (-10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xB3E5FC }), -10, 0.2, -10); 
+        addBox(4, 0.8, 3.5, materials.bed, -11, 0.2, -12); // Bed
+
+        // Zone 6: SOUTH (Bedroom 3) -> 0, +Z (10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xFFE0B2 }), 0, 0.2, 10); 
+        addBox(3.5, 0.8, 4, materials.wood, 0, 0.2, 12); // Bed
+
+        // Zone 7: WEST (Bathrooms) -> -X (-10), 0
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xE0E0E0 }), -10, 0.2, 0); 
+        addBox(2, 0.6, 4, materials.water, -12, 0.2, 0); // Tub
+        addBox(1, 1, 1.5, new THREE.MeshStandardMaterial({ color: 0xffffff }), -12, 0.2, 3); // Toilet
+
+        // Zone 8: EAST (Living Room / Entrance) -> +X (10), 0
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xC8E6C9 }), 10, 0.2, 0); // Greenish welcoming floor
+        addBox(2, 1, 5, new THREE.MeshStandardMaterial({ color: 0xe74c3c }), 8, 0.2, 0); // Sofa
+
+        // Zone 9: NORTH (Dining Area) -> 0, -Z (-10)
+        addBox(9, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xF5F5F5 }), 0, 0.2, -10); 
+        addBox(4, 1, 3, materials.darkWood, 0, 0.2, -10); // Dining Table
+        addBox(1, 1.2, 1, materials.wood, -2, 0.2, -8.5); // Chair
+        addBox(1, 1.2, 1, materials.wood, 2, 0.2, -8.5);  // Chair
+
+        // Internal Partitions (Grid visual dividers)
+        addBox(30, 0.5, 0.2, materials.wall, 0, 0, -5);
+        addBox(30, 0.5, 0.2, materials.wall, 0, 0, 5);
+        addBox(0.2, 0.5, 30, materials.wall, -5, 0, 0);
+        addBox(0.2, 0.5, 30, materials.wall, 5, 0, 0);
+
+
+        // 4. Tour Locations Data (Waypoints with Directions)
+        const locations = [
+            { name: "Bird's Eye View (Vastu Grid)", pos: [0, 35, 25], look: [0, 0, 0] },
+            { name: "East Facing Entrance", pos: [25, 3, 0], look: [10, 1, 0] },
+            { name: "Living Room (East)", pos: [16, 4, 0], look: [10, 1, 0] },
+            { name: "Puja Ghar (North-East) - Vastu Mandatory", pos: [12, 4, -2], look: [13, 1, -13] },
+            { name: "Dining Area (North)", pos: [6, 4, -4], look: [0, 1, -10] },
+            { name: "Bedroom 2 (North-West)", pos: [-2, 4, -4], look: [-10, 1, -10] },
+            { name: "Bathrooms (West)", pos: [-4, 4, 0], look: [-10, 1, 0] },
+            { name: "Master Bedroom (South-West) - Vastu Mandatory", pos: [-2, 4, 4], look: [-10, 1, 10] },
+            { name: "Bedroom 3 (South)", pos: [0, 5, 4], look: [0, 1, 10] },
+            { name: "Kitchen (South-East) - Vastu Mandatory", pos: [10, 4, 2], look: [13, 1, 10] },
+            { name: "Brahmasthan (Center) - Clutter Free", pos: [0, 6, 8], look: [0, 0, 0] }
+        ];
+
+        let currentIndex = 0;
+        
+        // Vectors for smooth interpolation
+        let targetPos = new THREE.Vector3(...locations[0].pos);
+        let targetLook = new THREE.Vector3(...locations[0].look);
+        let currentLook = new THREE.Vector3(...locations[0].look);
+
+        // Initialize Camera
+        camera.position.copy(targetPos);
+        camera.lookAt(currentLook);
+
+        // 5. Interactions
+        const label = document.getElementById('room-label');
+        
+        window.addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % locations.length;
+            const loc = locations[currentIndex];
+            
+            targetPos.set(...loc.pos);
+            targetLook.set(...loc.look);
+            
+            // UI Update with Directional Info
+            label.innerText = loc.name;
+            
+            // Randomize label color slightly for visual feedback, but keep it dark
+            const hue = Math.floor(Math.random() * 360);
+            label.style.background = `hsla(${hue}, 60%, 20%, 0.9)`;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 6. Animation Loop (The "Flow" mechanic)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smoothly interpolate (lerp) camera position and look target
+            camera.position.lerp(targetPos, 0.025);
+            currentLook.lerp(targetLook, 0.025);
+            camera.lookAt(currentLook);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
