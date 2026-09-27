@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaastu 3BHK Interactive Floor Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* Architectural Grid Styles */
+        .floor-plan-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 6px;
+            background-color: #334155; /* Wall color acting as gap */
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .room-cell {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .room-cell:hover {
+            transform: scale(0.98);
+            filter: brightness(1.05);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .room-cell.active {
+            ring: 4px;
+            ring-color: #3b82f6;
+            transform: scale(0.95);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+
+        /* Compass Styles */
+        .compass {
+            position: absolute;
+            top: -30px;
+            left: -30px;
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: #64748b;
+            z-index: 20;
+        }
+        .compass::before, .compass::after {
+            content: '';
+            position: absolute;
+            background: #cbd5e1;
+        }
+        .compass::before { width: 2px; height: 60px; }
+        .compass::after { width: 60px; height: 2px; }
+        
+        .compass-label { position: absolute; font-size: 10px; font-weight: 700; color: #1e293b; }
+        .compass-n { top: 4px; color: #ef4444; }
+        .compass-s { bottom: 4px; }
+        .compass-e { right: 6px; }
+        .compass-w { left: 6px; }
+
+        /* Custom Scrollbar for details panel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4 md:px-8">
+
+    <header class="text-center mb-10 w-full max-w-6xl">
+        <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-800 mb-3">
+            Vaastu Purusha Mandala
+        </h1>
+        <p class="text-lg text-slate-500 max-w-2xl mx-auto">
+            Interactive 3BHK + Corporate Layout. Hover or tap on any room in the 3x3 grid to explore its dimensions, elemental affinity, and Vaastu guidelines.
+        </p>
+    </header>
+
+    <main class="w-full max-w-6xl flex flex-col lg:flex-row gap-10 items-start">
+        
+        <!-- Left Column: Floor Plan -->
+        <div class="w-full lg:w-3/5 relative">
+            <div class="compass">
+                <span class="compass-label compass-n">N</span>
+                <span class="compass-label compass-s">S</span>
+                <span class="compass-label compass-e">E</span>
+                <span class="compass-label compass-w">W</span>
+            </div>
+            
+            <div id="floor-plan" class="floor-plan-grid relative bg-slate-700">
+                <!-- Grid cells will be injected here via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Right Column: Details Panel -->
+        <div class="w-full lg:w-2/5 h-full">
+            <div id="details-panel" class="bg-white rounded-2xl shadow-xl p-8 sticky top-10 border border-slate-100 min-h-[500px] flex flex-col justify-center transition-all duration-300">
+                
+                <!-- Default Empty State -->
+                <div id="empty-state" class="text-center text-slate-400">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+                    </svg>
+                    <h3 class="text-xl font-medium text-slate-500">Explore the Space</h3>
+                    <p class="mt-2 text-sm">Hover over or click a room on the floor plan to view detailed Vaastu metrics.</p>
+                </div>
+
+                <!-- Active Content State (Hidden by default) -->
+                <div id="active-state" class="hidden h-full flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <span id="panel-direction" class="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-slate-100 text-slate-600">Direction</span>
+                        <span id="panel-dimensions" class="text-sm font-semibold text-slate-500 bg-slate-50 px-3 py-1 rounded border border-slate-200">0' x 0'</span>
+                    </div>
+                    
+                    <h2 id="panel-title" class="text-3xl font-bold text-slate-800 mb-2">Room Name</h2>
+                    
+                    <div class="flex items-center gap-2 mb-6">
+                        <div id="element-color-dot" class="w-4 h-4 rounded-full shadow-sm"></div>
+                        <span id="panel-element" class="text-sm font-medium text-slate-600">Element</span>
+                    </div>
+
+                    <div class="space-y-6 flex-grow">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Vaastu Significance</h4>
+                            <p id="panel-description" class="text-slate-700 leading-relaxed text-sm"></p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Optimal Colors</h4>
+                                <p id="panel-colors" class="text-sm font-medium text-slate-800"></p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Energy Flow</h4>
+                                <p id="panel-energy" class="text-sm font-medium text-slate-800"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Vaastu Data Configuration
+        // Organized as a 3x3 grid: Top-Left to Bottom-Right
+        const roomsData = [
+            {
+                id: 'nw',
+                name: 'Guest Bedroom',
+                direction: 'North-West (Vayavya)',
+                dimensions: "12' x 14'",
+                colorHex: '#f3f4f6', // Light Grey
+                textColor: '#374151',
+                element: 'Air (Vayu)',
+                description: 'Ruled by the Air element, this zone signifies movement and communication. It is ideal for guests as it ensures they feel welcome but don\'t overstay. Also excellent for unmarried daughters.',
+                optimalColors: 'Light Grey, White, Cream',
+                energyFlow: 'Dynamic, Restless, Communicative'
+            },
+            {
+                id: 'n',
+                name: 'Garden Area',
+                direction: 'North (Kubera)',
+                dimensions: "20' x 14'",
+                colorHex: '#dcfce7', // Light Green
+                textColor: '#166534',
+                element: 'Water / Prosperity',
+                description: 'The North is the zone of Kubera (Lord of Wealth). Keeping this area open, green, and clutter-free invites financial prosperity and career growth. Perfect for a calming garden.',
+                optimalColors: 'Light Green, Pistachio, Teal',
+                energyFlow: 'Growth, Wealth, Serenity'
+            },
+            {
+                id: 'ne',
+                name: 'Parking & Library',
+                direction: 'North-East (Ishanya)',
+                dimensions: "15' x 14'",
+                colorHex: '#e0f2fe', // Light Blue
+                textColor: '#075985',
+                element: 'Water (Jal)',
+                description: 'The most sacred zone. It should be kept light and clean. A library here promotes focus and wisdom. Parking is acceptable if structures are lightweight and do not block morning sunlight.',
+                optimalColors: 'Light Blue, White, Pale Yellow',
+                energyFlow: 'Spiritual, Calm, Receptive'
+            },
+            {
+                id: 'w',
+                name: 'Conference Room',
+                direction: 'West (Varuna)',
+                dimensions: "12' x 16'",
+                colorHex: '#cbd5e1', // Slate/Blue-Grey
+                textColor: '#334155',
+                element: 'Water / Space',
+                description: 'Ruled by Varuna, the West governs gains and profits. A conference room or dining area here ensures fruitful discussions, solid partnerships, and sustained business growth.',
+                optimalColors: 'Slate, Blue-Grey, White',
+                energyFlow: 'Profitable, Structured, Decisive'
+            },
+            {
+                id: 'center',
+                name: 'Central Hall',
+                direction: 'Center (Brahmasthan)',
+                dimensions: "20' x 16'",
+                colorHex: '#fef08a', // Light Yellow
+                textColor: '#854d0e',
+                element: 'Space (Akasha)',
+                description: 'The cosmic center of the layout. Must remain absolutely open, clutter-free, and well-lit. It acts as the lung of the house, distributing cosmic energy to all other directions.',
+                optimalColors: 'Light Yellow, White, Gold',
+                energyFlow: 'Expansive, Balanced, Core'
+            },
+            {
+                id: 'e',
+                name: 'Main Entrance',
+                direction: 'East (Indra)',
+                dimensions: "15' x 16'",
+                colorHex: '#fef9c3', // Pale Yellow
+                textColor: '#a16207',
+                element: 'Fire / Light',
+                description: 'Facing the rising sun, the East brings in vital life force (Prana), health, and social connectivity. A main entrance here is highly auspicious, inviting positive solar energy.',
+                optimalColors: 'Pale Yellow, White, Vermillion',
+                energyFlow: 'Vitality, Health, Social'
+            },
+            {
+                id: 'sw',
+                name: 'Master Bedroom',
+                direction: 'South-West (Nairutya)',
+                dimensions: "12' x 14'",
+                colorHex: '#ffdab9', // Peach/Earthy Brown
+                textColor: '#7c2d12',
+                element: 'Earth (Prithvi)',
+                description: 'The zone of stability, strength, and dominance. Perfect for the head of the family. The Earth element grounds energy, ensuring peaceful sleep and confident decision-making.',
+                optimalColors: 'Earthy Brown, Peach, Mud',
+                energyFlow: 'Stable, Heavy, Dominant'
+            },
+            {
+                id: 's',
+                name: 'Bedroom 3 & Stairs',
+                direction: 'South (Yama)',
+                dimensions: "20' x 14'",
+                colorHex: '#fca5a5', // Terracotta/Muted Red
+                textColor: '#7f1d1d',
+                element: 'Fire / Earth',
+                description: 'The South signifies fame, relaxation, and heavy structures. Stairs are placed here to block negative energy from the South. Also a good zone for a secondary bedroom.',
+                optimalColors: 'Terracotta, Muted Red, Brown',
+                energyFlow: 'Grounding, Protective, Restful'
+            },
+            {
+                id: 'se',
+                name: 'Kitchen',
+                direction: 'South-East (Agneya)',
+                dimensions: "15' x 14'",
+                colorHex: '#ffedd5', // Soft Orange/Pink
+                textColor: '#9a3412',
+                element: 'Fire (Agni)',
+                description: 'The undeniable zone of Fire. Placing the kitchen here ensures health and well-being. The cook should ideally face East while cooking to absorb morning solar energy.',
+                optimalColors: 'Soft Orange, Pink, Coral',
+                energyFlow: 'Energetic, Transformative, Warm'
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const floorPlanContainer = document.getElementById('floor-plan');
+            const emptyState = document.getElementById('empty-state');
+            const activeState = document.getElementById('active-state');
+            
+            // DOM Elements for Panel Update
+            const panelTitle = document.getElementById('panel-title');
+            const panelDirection = document.getElementById('panel-direction');
+            const panelDimensions = document.getElementById('panel-dimensions');
+            const panelElement = document.getElementById('panel-element');
+            const panelDescription = document.getElementById('panel-description');
+            const panelColors = document.getElementById('panel-colors');
+            const panelEnergy = document.getElementById('panel-energy');
+            const elementColorDot = document.getElementById('element-color-dot');
+
+            let activeRoomId = null;
+
+            // Generate Grid Items
+            roomsData.forEach(room => {
+                const cell = document.createElement('div');
+                cell.className = 'room-cell';
+                cell.style.backgroundColor = room.colorHex;
+                cell.style.color = room.textColor;
+                cell.dataset.id = room.id;
+
+                cell.innerHTML = `
+                    <span class="text-xs font-bold tracking-widest uppercase opacity-70 mb-1">${room.direction.split(' ')[0]}</span>
+                    <h3 class="text-sm md:text-lg font-bold leading-tight mb-2">${room.name}</h3>
+                    <span class="text-xs font-medium bg-white/40 px-2 py-1 rounded">${room.dimensions}</span>
+                `;
+
+                // Event Listeners for Interaction
+                const handleInteraction = () => updatePanel(room, cell);
+                
+                cell.addEventListener('mouseenter', handleInteraction);
+                cell.addEventListener('click', handleInteraction);
+
+                floorPlanContainer.appendChild(cell);
+            });
+
+            // Update Details Panel Function
+            function updatePanel(room, cellElement) {
+                // Remove active class from all
+                document.querySelectorAll('.room-cell').forEach(c => {
+                    c.style.boxShadow = 'none';
+                    c.style.border = 'none';
+                    c.style.zIndex = '1';
+                });
+                
+                // Add active highlight to current
+                cellElement.style.boxShadow = 'inset 0 0 0 4px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.2)';
+                cellElement.style.zIndex = '10';
+
+                // Toggle States
+                emptyState.classList.add('hidden');
+                activeState.classList.remove('hidden');
+
+                // Update Content
+                panelTitle.textContent = room.name;
+                panelDirection.textContent = room.direction;
+                panelDimensions.textContent = room.dimensions;
+                panelElement.textContent = room.element;
+                panelDescription.textContent = room.description;
+                panelColors.textContent = room.optimalColors;
+                panelEnergy.textContent = room.energyFlow;
+                
+                // Update Color Dot
+                elementColorDot.style.backgroundColor = room.colorHex;
+                elementColorDot.style.border = `1px solid ${room.textColor}`;
+            }
+
+            // Optional: Handle mouse leave on the whole container to reset
+            // If you want it to stick to the last hovered, remove this block.
+            /*
+            floorPlanContainer.addEventListener('mouseleave', () => {
+                emptyState.classList.remove('hidden');
+                activeState.classList.add('hidden');
+                document.querySelectorAll('.room-cell').forEach(c => {
+                    c.style.boxShadow = 'none';
+                    c.style.zIndex = '1';
+                });
+            });
+            */
+        });
+    </script>
+</body>
+</html>
